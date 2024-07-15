@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,20 +13,23 @@ import (
 	"github.com/sverdejot/espotifai/cmd/server/bootstrap"
 	"github.com/sverdejot/espotifai/internal/auth"
 	"github.com/sverdejot/espotifai/internal/controllers"
+	"github.com/sverdejot/espotifai/internal/infrastructure/http/clients"
 )
-
 
 func main() {
 	config := bootstrap.ReadConfig()
 	mux := http.NewServeMux()
 
-	auth_client := auth.NewSpotifyAuth(config.ClientId, config.ClientSecret)
+	client := clients.NewSpotifyClient(config.ClientId, config.ClientSecret)
 
-	mux.HandleFunc("GET /index", controllers.Index(auth_client))
-	mux.HandleFunc("GET /callback", controllers.Profile(auth_client))
+	authMiddleware := auth.NewMiddleware(client)
+
+	mux.HandleFunc("GET /index", controllers.Index(config.SpotifyAuthUrl))
+	mux.HandleFunc("GET /callback", controllers.Callback(authMiddleware))
+	mux.Handle("GET /me", authMiddleware.Use(controllers.Profile(client)))
 
 	server := &http.Server{
-		Addr: ":8080",
+		Addr: fmt.Sprintf(":%d", config.Port),
 
 		ReadTimeout:       2 * time.Second,
 		WriteTimeout:      5 * time.Second,
