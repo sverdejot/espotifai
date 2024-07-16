@@ -1,4 +1,4 @@
-package clients
+package spotify
 
 import (
 	"encoding/base64"
@@ -12,29 +12,29 @@ import (
 	"github.com/sverdejot/espotifai/internal/model"
 )
 
-var sessions map[string]string = make(map[string]string)
+var tokens map[string]string = make(map[string]string)
 
-type SpotifyClient struct {
+type Client struct {
 	*http.Client
 
 	clientId     string
 	clientSecret string
 }
 
-func NewSpotifyClient(clientId, clientSecret string) *SpotifyClient {
+func NewClient(clientId, clientSecret string) *Client {
 	// TODO: configure transport to RoundTrip request to automatically add headers
 	client := &http.Client{
 		Transport: http.DefaultTransport,
 		Timeout:   3 * time.Second,
 	}
-	return &SpotifyClient{
+	return &Client{
 		client,
 		clientId,
 		clientSecret,
 	}
 }
 
-func (c *SpotifyClient) Me(token string) model.Profile {
+func (c *Client) Me(token string) model.Profile {
 	req, err := http.NewRequest("GET", "https://api.spotify.com/v1/me", nil)
 	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
 	if err != nil {
@@ -54,7 +54,38 @@ func (c *SpotifyClient) Me(token string) model.Profile {
 	return profile
 }
 
-func (c *SpotifyClient) RequestToken(code string) (string, error) {
+func (c *Client) Artists(token string) model.TopArtists {
+	return c.Top(token, "artists")
+}
+
+func (c *Client) Tracks(token string) model.TopArtists {
+	return c.Top(token, "tracks")
+}
+
+func (c *Client) Top(token, typpe string) model.TopArtists {
+	req, err := http.NewRequest("GET", "https://api.spotify.com/v1/me/top/"+typpe, nil)
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	resp, err := c.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	var topArtists model.TopArtists
+	if err := json.NewDecoder(resp.Body).Decode(&topArtists); err != nil {
+		log.Fatal("error while unmarshalling: ", err)
+	}
+
+	return topArtists
+}
+
+func (c *Client) RequestToken(code string) (string, error) {
+	if token, ok := tokens[code]; ok {
+		return token, nil
+	}
 	endpoint := url.URL{
 		Scheme: "https",
 		Host:   "accounts.spotify.com",
@@ -92,6 +123,8 @@ func (c *SpotifyClient) RequestToken(code string) (string, error) {
 	if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
 		return "", fmt.Errorf("failed unmarshalling response: %w", err)
 	}
+
+	tokens[code] = response.AccessToken
 
 	return response.AccessToken, nil
 }

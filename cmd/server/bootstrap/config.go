@@ -3,8 +3,17 @@ package bootstrap
 import (
 	"log"
 	"net/url"
+	"strings"
 
 	"github.com/caarlos0/env/v11"
+)
+
+var (
+	scopes []string = []string{
+		"user-read-email",
+		"user-read-private",
+		"user-top-read",
+	}
 )
 
 type Config struct {
@@ -27,13 +36,14 @@ func ReadConfig() (config Config) {
 
 	config.SpotifyAuthUrl = url.URL{
 		Scheme: "https",
-		Host: "accounts.spotify.com",
-		Path: "authorize",
+		Host:   "accounts.spotify.com",
+		Path:   "authorize",
 
 		RawQuery: url.Values{
-			"response_type": { "code" },
-			"client_id": { config.ClientId },
-			"redirect_uri": { config.CallbackUrl.String() },
+			"response_type": {"code"},
+			"client_id":     {config.ClientId},
+			"redirect_uri":  {config.CallbackUrl.String()},
+			"scope": { strings.Join(scopes, ",") },
 		}.Encode(),
 	}
 

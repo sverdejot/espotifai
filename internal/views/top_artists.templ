@@ -1,0 +1,25 @@
+package views
+
+import "github.com/sverdejot/espotifai/internal/model"
+import "fmt"
+
+templ TopArtists(artists model.TopArtists) {
+	<table>
+		<tr>
+			<th></th>
+			<th>Name</th>
+			<th>Popularity</th>
+		</tr>
+		for _, artist := range artists.Items {
+			<tr>
+				<td>
+				if len(artist.Images) > 0 {
+					<img src={ artist.Images[0].URL } width={ fmt.Sprint(artist.Images[0].Width) } height={  fmt.Sprint(artist.Images[0].Height) }/>
+				}
+				</td>
+				<td>{ artist.Name }</td>
+				<td>{	fmt.Sprint(artist.Popularity) }</td>
+			</tr>
+		}
+	</table>
+}

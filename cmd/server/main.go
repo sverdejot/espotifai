@@ -11,22 +11,24 @@ import (
 	"time"
 
 	"github.com/sverdejot/espotifai/cmd/server/bootstrap"
-	"github.com/sverdejot/espotifai/internal/auth"
 	"github.com/sverdejot/espotifai/internal/controllers"
-	"github.com/sverdejot/espotifai/internal/infrastructure/http/clients"
+	"github.com/sverdejot/espotifai/internal/controllers/middleware"
+	"github.com/sverdejot/espotifai/internal/infrastructure/http/clients/spotify"
 )
 
 func main() {
 	config := bootstrap.ReadConfig()
 	mux := http.NewServeMux()
 
-	client := clients.NewSpotifyClient(config.ClientId, config.ClientSecret)
+	client := spotify.NewClient(config.ClientId, config.ClientSecret)
 
-	authMiddleware := auth.NewMiddleware(client)
+	authMiddleware := middleware.NewAuthMiddleware(client)
 
-	mux.HandleFunc("GET /index", controllers.Index(config.SpotifyAuthUrl))
+	mux.HandleFunc("GET /", controllers.Index(config.SpotifyAuthUrl))
 	mux.HandleFunc("GET /callback", controllers.Callback(authMiddleware))
 	mux.Handle("GET /me", authMiddleware.Use(controllers.Profile(client)))
+	mux.Handle("GET /me/top/artists", authMiddleware.Use(controllers.TopArtists(client)))
+	mux.Handle("GET /me/top/tracks", authMiddleware.Use(controllers.TopTracks(client)))
 
 	server := &http.Server{
 		Addr: fmt.Sprintf(":%d", config.Port),

@@ -1,32 +1,30 @@
-package auth
+package middleware
 
 import (
 	"net/http"
 	"time"
 
-	"github.com/sverdejot/espotifai/internal/infrastructure/http/clients"
+	"github.com/sverdejot/espotifai/internal/infrastructure/http/clients/spotify"
 )
 
-const (
-	cookieKey = "Authorization"
-)
 
 type AuthMiddleware struct {
-	client *clients.SpotifyClient
+	client *spotify.Client
 
-	sessions map[string]session
+	sessions map[string]spotify.Session
 }
 
-func NewMiddleware(client *clients.SpotifyClient) *AuthMiddleware {
+func NewAuthMiddleware(client *spotify.Client) *AuthMiddleware {
 	return &AuthMiddleware{
 		client:   client,
-		sessions: make(map[string]session),
+		sessions: make(map[string]spotify.Session),
 	}
 }
 
 func (m *AuthMiddleware) SetSession(key, token string) {
-	m.sessions[key] = session{
-		token, time.Now().Add(time.Hour),
+	m.sessions[key] = spotify.Session{
+		Token: token, 
+		ExpireAt: time.Now().Add(time.Hour),
 	}
 }
 
@@ -55,7 +53,19 @@ func (m *AuthMiddleware) Use(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := SetSpotifyToken(r.Context(), session.Token)
+		ctx := spotify.SetToken(r.Context(), session.Token)
 		next.ServeHTTP(w, r.WithContext(ctx))
+	})
+}
+
+const (
+	cookieKey = "Authorization"
+)
+
+func SetCookie(w http.ResponseWriter, token string, expires time.Time) {
+	http.SetCookie(w, &http.Cookie{
+		Name:    cookieKey,
+		Value:   token,
+		Expires: expires,
 	})
 }

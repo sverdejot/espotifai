@@ -7,7 +7,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/sverdejot/espotifai/internal/auth"
-	"github.com/sverdejot/espotifai/internal/views"
 )
 
 type sessionStorage interface {
@@ -24,6 +23,6 @@ func Callback(s sessionStorage) http.HandlerFunc {
 		key, _ := uuid.NewRandom()
 		s.SetSession(key.String(), codeParam[0])
 		auth.SetCookie(w, key.String(), time.Now().Add(time.Hour))
-		views.Callback().Render(r.Context(), w)
+		http.Redirect(w, r, "/me", http.StatusSeeOther)
 	}
 }

@@ -6,4 +6,7 @@ import (
 
 templ Profile(profile model.Profile) {
 		<h1>Hi { profile.DisplayName }</h1>
+		<a href="/me/top/artists">
+			<button class="button">Now you can go to your top artists</button>
+		</a>
 }
